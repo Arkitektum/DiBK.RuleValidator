@@ -1,0 +1,277 @@
+﻿using DiBK.RuleValidator.Extensions;
+using DiBK.RuleValidator.Models;
+using DiBK.RuleValidator.Models.Config;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Dynamic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace DiBK.RuleValidator.Services
+{
+    public class RuleValidator : IRuleValidator
+    {
+        private readonly IRuleService _ruleService;
+        private readonly IRuleConfigs _ruleConfigs;
+        private readonly ILogger<RuleValidator> _logger;
+        private readonly ILogger<Rule> _ruleLogger;
+        private readonly List<RuleConfig> _activeRuleConfigs = new();
+        private readonly Dictionary<Type, Dictionary<string, object>> _activeRuleSettings = new();
+
+        public RuleValidator(
+            IRuleService ruleService,
+            IRuleConfigs ruleSetConfigs,
+            ILogger<RuleValidator> logger,
+            ILogger<Rule> ruleLogger)
+        {
+            _ruleService = ruleService;
+            _ruleConfigs = ruleSetConfigs;
+            _logger = logger;
+            _ruleLogger = ruleLogger;
+        }
+
+        public void Validate<T>(T validationData, Action<ValidationSettings> settings = null) where T : class
+        {
+            var config = _ruleConfigs.Get(typeof(T));
+            var rules = GetRules<T>(config, settings);
+
+            _ruleService.AddRules(rules);
+
+            ExecuteRules(rules, validationData);
+        }
+
+        public void LoadRules<T>(Action<ValidationSettings> settings = null) where T : class
+        {
+            var config = _ruleConfigs.Get(typeof(T));
+            var rules = GetRules<T>(config, settings);
+
+            _ruleService.AddRules(rules);
+        }
+
+        public List<RuleSet> GetRuleInfo(IEnumerable<Type> ruleTypes, Action<RuleInfoSettings> settings = null)
+        {
+            var ruleInfoSettings = new RuleInfoSettings();
+            settings?.Invoke(ruleInfoSettings);
+
+            return ruleTypes
+                .Select(type =>
+                {
+                    var config = _ruleConfigs.Get(type);
+                    var ruleSet = new RuleSet { Name = config.Name, Description = config.Description };
+
+                    ruleSet.Groups = config.Groups
+                        .Select(groupConfig =>
+                        {
+                            var group = new RuleSetGroup { Name = groupConfig.Name };
+
+                            group.Rules = groupConfig.Rules
+                                .Where(ruleConfig => !ruleInfoSettings.SkippedRules.Contains(ruleConfig.Type))
+                                .Select(ruleConfig =>
+                                {
+                                    var rule = Activator.CreateInstance(ruleConfig.Type) as Rule;
+                                    rule.Create();
+
+                                    return new RuleInfo(rule.Id, rule.Name, rule.Description, rule.MessageType.ToString(), rule.Documentation);
+                                })
+                                .ToList();
+
+                            return group;
+                        })
+                        .ToList();
+
+                    return ruleSet;
+                })
+                .ToList();
+        }
+
+        public List<Rule> GetRulesBySettings(List<Rule> rules, Action<dynamic> settingsFilter)
+        {
+            dynamic filter = new ExpandoObject();
+            settingsFilter.Invoke(filter);
+
+            var settings = new Dictionary<string, object>(filter);
+            var ruleTypes = new List<Type>();
+
+            foreach (var (type, ruleSettings) in _activeRuleSettings)
+            {
+                var isMatch = settings
+                    .All(setting => ruleSettings.ContainsKey(setting.Key) && ruleSettings[setting.Key].Equals(setting.Value));
+
+                if (isMatch)
+                    ruleTypes.Add(type);
+            }
+
+            return rules
+                .Where(rule => ruleTypes.Any(type => type == rule.GetType()))
+                .ToList();
+        }
+
+        public Rule<T> GetRule<U, T>() where T : class where U : Rule<T>
+        {
+            return _ruleService.Get<T, U>();
+        }
+
+        public List<Rule> GetAllRules()
+        {
+            var rules = _ruleService.GetAll();
+
+            return OrderRules(rules);
+        }
+
+        public List<Rule> GetExecutedRules()
+        {
+            var rules = _ruleService.GetAll()
+                .Where(rule => rule.Status != Status.NOT_EXECUTED)
+                .ToList();
+
+            return OrderRules(rules);
+        }
+
+        private List<Rule> OrderRules(List<Rule> rules)
+        {
+            var ruleSettings = _activeRuleConfigs
+                .SelectMany(config => config.Groups
+                    .SelectMany(settings => settings.Rules));
+
+            var orderedRules = new List<Rule>();
+
+            foreach (var setting in ruleSettings)
+            {
+                var rule = rules.SingleOrDefault(rule => rule.GetType() == setting.Type);
+
+                if (rule != null)
+                    orderedRules.Add(rule);
+            }
+
+            return orderedRules;
+        }
+
+        private List<Rule<T>> GetRules<T>(RuleConfig ruleConfig, Action<ValidationSettings> settings = null) where T : class
+        {
+            var validationSettings = new ValidationSettings();
+            settings?.Invoke(validationSettings);
+
+            SetActiveConfig(ruleConfig, validationSettings);
+
+            var rules = ruleConfig.Groups
+                .Where(group => !validationSettings.SkippedGroups.Contains(group.GroupId))
+                .SelectMany(group => group.Rules)
+                .Where(ruleConfig => !validationSettings.SkippedRules.Contains(ruleConfig.Type))
+                .Select(ruleSettings => CreateRule<T>(ruleSettings.Type, ruleConfig.GlobalSettings))
+                .Where(rule => !rule.Disabled)
+                .ToList();
+
+            return rules;
+        }
+
+        private Rule<T> CreateRule<T>(Type ruleType, Dictionary<string, object> ruleSettings) where T : class
+        {
+            var rule = Activator.CreateInstance(ruleType) as Rule<T>;
+
+            rule.Setup(_ruleService, ruleSettings, _ruleLogger);
+            rule.Create();
+
+            return rule;
+        }
+
+        private void ExecuteRules<T>(List<Rule<T>> rules, T validationData) where T : class
+        {
+            var sequentials = new List<Rule<T>>();
+            var parallels = new List<Rule<T>>();
+
+            foreach (var rule in rules)
+            {
+                if (rules.Any(r => r.Parent == rule.GetType()))
+                    sequentials.Add(rule);
+                else
+                    parallels.Add(rule);
+            }
+
+            sequentials.ForEach(rule => ExecuteRule(rule, validationData));
+            Parallel.ForEach(parallels, rule => ExecuteRule(rule, validationData));
+        }
+
+        private void ExecuteRule<T>(Rule<T> rule, T validationData) where T : class
+        {
+            try
+            {
+                rule.Execute(validationData);
+            }
+            catch (Exception exception)
+            {
+                rule.Status = Status.SYSTEM_ERROR;
+                _logger.LogError(exception, $"Could not execute rule '{rule}'");
+            }
+        }
+
+        private void SetActiveConfig(RuleConfig ruleConfig, ValidationSettings validationSettings)
+        {
+            _activeRuleConfigs.Add(ruleConfig);
+
+            var skippedRules = GetSkippedRules(ruleConfig, validationSettings);
+            var ruleSettingsDictionary = new Dictionary<Type, Dictionary<string, object>>();
+
+            foreach (var groupSettings in ruleConfig.Groups)
+            {
+                foreach (var ruleSettings in groupSettings.Rules.Where(settings => !skippedRules.Contains(settings.Type)))
+                {
+                    ruleSettingsDictionary.Add(ruleSettings.Type, ruleSettings.Settings.Merge(groupSettings.Settings));
+                }
+            }
+
+            if (!ruleSettingsDictionary.Any())
+                return;
+
+            foreach (var groupSettings in validationSettings.GroupSettings)
+            {
+                var groupTypes = ruleConfig.Groups
+                    .SingleOrDefault(settings => settings.GroupId == groupSettings.GroupId);
+
+                if (groupTypes == null)
+                    continue;
+
+                var ruleTypes = groupTypes.Rules
+                    .Select(settings => settings.Type);
+
+                foreach (var (type, settings) in ruleSettingsDictionary)
+                {
+                    if (ruleTypes.Contains(type))
+                        settings.Append(groupSettings.Settings);
+                }
+            }
+
+            foreach (var ruleSettings in validationSettings.RuleSettings)
+            {
+                foreach (var (type, settings) in ruleSettingsDictionary)
+                {
+                    if (type == ruleSettings.Type)
+                        settings.Append(ruleSettings.Settings);
+                }
+            }
+
+            _activeRuleSettings.Append(ruleSettingsDictionary);
+        }
+
+        private static List<Type> GetSkippedRules(RuleConfig ruleConfig, ValidationSettings validationSettings)
+        {
+            var skippedRules = new List<Type>();
+
+            foreach (var groupId in validationSettings.SkippedGroups)
+            {
+                var groupSettings = ruleConfig.Groups.SingleOrDefault(settings => settings.GroupId == groupId);
+
+                if (groupSettings != null)
+                    skippedRules.AddRange(groupSettings.Rules.Select(ruleSettings => ruleSettings.Type));
+            }
+
+            foreach (var type in validationSettings.SkippedRules)
+            {
+                if (!skippedRules.Contains(type))
+                    skippedRules.Add(type);
+            }
+
+            return skippedRules;
+        }
+    }
+}
