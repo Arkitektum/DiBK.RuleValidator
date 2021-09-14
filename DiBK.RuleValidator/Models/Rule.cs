@@ -1,11 +1,10 @@
 ﻿using DiBK.RuleValidator.Exceptions;
-using DiBK.RuleValidator.Services;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace DiBK.RuleValidator.Models
+namespace DiBK.RuleValidator
 {
     public abstract class Rule
     {

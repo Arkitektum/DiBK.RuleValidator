@@ -6,6 +6,7 @@
     <Description>Motor for validering av regler</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>Direktoratet for byggkvalitet (DiBK)</Copyright>
+    <RepositoryUrl>https://github.com/Arkitektum/DiBK.RuleValidator</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>

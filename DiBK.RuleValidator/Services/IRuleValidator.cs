@@ -1,8 +1,7 @@
-using DiBK.RuleValidator.Models;
 using System;
 using System.Collections.Generic;
 
-namespace DiBK.RuleValidator.Services
+namespace DiBK.RuleValidator
 {
     public interface IRuleValidator
     {

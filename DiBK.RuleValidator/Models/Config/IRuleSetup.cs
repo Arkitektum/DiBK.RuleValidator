@@ -1,4 +1,4 @@
-﻿namespace DiBK.RuleValidator.Models.Config
+﻿namespace DiBK.RuleValidator.Config
 {
     public interface IRuleSetup
     {

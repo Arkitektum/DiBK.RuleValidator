@@ -1,10 +1,9 @@
 ﻿using DiBK.RuleValidator.Exceptions;
-using DiBK.RuleValidator.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace DiBK.RuleValidator.Services
+namespace DiBK.RuleValidator
 {
     public class RuleService : IRuleService
     {

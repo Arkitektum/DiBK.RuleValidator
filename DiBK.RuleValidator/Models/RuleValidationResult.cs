@@ -1,4 +1,4 @@
-﻿namespace DiBK.RuleValidator.Models
+﻿namespace DiBK.RuleValidator
 {
     public class RuleValidationResult
     {

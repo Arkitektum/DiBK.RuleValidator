@@ -1,11 +1,8 @@
-﻿using DiBK.RuleValidator.Services;
-using DiBK.RuleValidator.Models.Config;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Validator = DiBK.RuleValidator.Services.RuleValidator;
 
 namespace DiBK.RuleValidator.Config
 {
@@ -17,7 +14,7 @@ namespace DiBK.RuleValidator.Config
                 throw new Exception();
 
             services.AddTransient<IRuleService, RuleService>();
-            services.AddTransient<IRuleValidator, Validator>();
+            services.AddTransient<IRuleValidator, RuleValidator>();
 
             var configs = GetRuleConfigs(ruleAssemblies);
 

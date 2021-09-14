@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace DiBK.RuleValidator.Models.Config
+namespace DiBK.RuleValidator.Config
 {
     public class GroupOptions
     {

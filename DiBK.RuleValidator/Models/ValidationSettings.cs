@@ -1,8 +1,8 @@
-﻿using DiBK.RuleValidator.Models.Config;
+﻿using DiBK.RuleValidator.Config;
 using System;
 using System.Collections.Generic;
 
-namespace DiBK.RuleValidator.Models
+namespace DiBK.RuleValidator
 {
     public class ValidationConfig
     {

@@ -1,6 +1,5 @@
-﻿using DiBK.RuleValidator.Extensions;
-using DiBK.RuleValidator.Models;
-using DiBK.RuleValidator.Models.Config;
+﻿using DiBK.RuleValidator.Config;
+using DiBK.RuleValidator.Extensions;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -8,7 +7,7 @@ using System.Dynamic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace DiBK.RuleValidator.Services
+namespace DiBK.RuleValidator
 {
     public class RuleValidator : IRuleValidator
     {

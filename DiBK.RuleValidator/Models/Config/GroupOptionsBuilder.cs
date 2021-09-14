@@ -1,8 +1,7 @@
-﻿using DiBK.RuleValidator.Models;
-using System;
+﻿using System;
 using System.Linq;
 
-namespace DiBK.RuleValidator.Models.Config
+namespace DiBK.RuleValidator.Config
 {
     public class GroupOptionsBuilder
     {

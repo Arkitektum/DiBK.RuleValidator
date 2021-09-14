@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace DiBK.RuleValidator.Models.Config
+namespace DiBK.RuleValidator.Config
 {
     public class RuleConfigBuilder<T> where T : class
     {

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace DiBK.RuleValidator.Models
+namespace DiBK.RuleValidator
 {
     public class RuleSetGroup
     {
