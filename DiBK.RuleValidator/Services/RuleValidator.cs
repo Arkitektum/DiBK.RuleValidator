@@ -30,7 +30,7 @@ namespace DiBK.RuleValidator
             _ruleLogger = ruleLogger;
         }
 
-        public void Validate<T>(T validationData, Action<ValidationSettings> settings = null) where T : class
+        public void Validate<T>(T validationData, Action<ValidationOptions> settings = null) where T : class
         {
             var config = _ruleConfigs.Get(typeof(T));
             var rules = GetRules<T>(config, settings);
@@ -40,7 +40,7 @@ namespace DiBK.RuleValidator
             ExecuteRules(rules, validationData);
         }
 
-        public void LoadRules<T>(Action<ValidationSettings> settings = null) where T : class
+        public void LoadRules<T>(Action<ValidationOptions> settings = null) where T : class
         {
             var config = _ruleConfigs.Get(typeof(T));
             var rules = GetRules<T>(config, settings);
@@ -48,10 +48,10 @@ namespace DiBK.RuleValidator
             _ruleService.AddRules(rules);
         }
 
-        public List<RuleSet> GetRuleInfo(IEnumerable<Type> ruleTypes, Action<RuleInfoSettings> settings = null)
+        public List<RuleSet> GetRuleInfo(IEnumerable<Type> ruleTypes, Action<ValidationOptions> options = null)
         {
-            var ruleInfoSettings = new RuleInfoSettings();
-            settings?.Invoke(ruleInfoSettings);
+            var validationOptions = new ValidationOptions();
+            options?.Invoke(validationOptions);
 
             return ruleTypes
                 .Select(type =>
@@ -60,15 +60,16 @@ namespace DiBK.RuleValidator
                     var ruleSet = new RuleSet { Name = config.Name, Description = config.Description };
 
                     ruleSet.Groups = config.Groups
-                        .Select(groupConfig =>
+                        .Where(groupOptions => !validationOptions.SkippedGroups.Contains(groupOptions.GroupId))
+                        .Select(groupOptions =>
                         {
-                            var group = new RuleSetGroup { Name = groupConfig.Name };
+                            var group = new RuleSetGroup { Name = groupOptions.Name };
 
-                            group.Rules = groupConfig.Rules
-                                .Where(ruleConfig => !ruleInfoSettings.SkippedRules.Contains(ruleConfig.Type))
-                                .Select(ruleConfig =>
+                            group.Rules = groupOptions.Rules
+                                .Where(ruleOptions => !validationOptions.SkippedRules.Contains(ruleOptions.Type))
+                                .Select(ruleOptions =>
                                 {
-                                    var rule = Activator.CreateInstance(ruleConfig.Type) as Rule;
+                                    var rule = Activator.CreateInstance(ruleOptions.Type) as Rule;
                                     rule.Create();
 
                                     return new RuleInfo(rule.Id, rule.Name, rule.Description, rule.MessageType.ToString(), rule.Documentation);
@@ -146,9 +147,9 @@ namespace DiBK.RuleValidator
             return orderedRules;
         }
 
-        private List<Rule<T>> GetRules<T>(RuleConfig ruleConfig, Action<ValidationSettings> settings = null) where T : class
+        private List<Rule<T>> GetRules<T>(RuleConfig ruleConfig, Action<ValidationOptions> settings = null) where T : class
         {
-            var validationSettings = new ValidationSettings();
+            var validationSettings = new ValidationOptions();
             settings?.Invoke(validationSettings);
 
             SetActiveConfig(ruleConfig, validationSettings);
@@ -204,7 +205,7 @@ namespace DiBK.RuleValidator
             }
         }
 
-        private void SetActiveConfig(RuleConfig ruleConfig, ValidationSettings validationSettings)
+        private void SetActiveConfig(RuleConfig ruleConfig, ValidationOptions validationSettings)
         {
             _activeRuleConfigs.Add(ruleConfig);
 
@@ -222,7 +223,7 @@ namespace DiBK.RuleValidator
             if (!ruleSettingsDictionary.Any())
                 return;
 
-            foreach (var groupSettings in validationSettings.GroupSettings)
+            foreach (var groupSettings in validationSettings.GroupOptions)
             {
                 var groupTypes = ruleConfig.Groups
                     .SingleOrDefault(settings => settings.GroupId == groupSettings.GroupId);
@@ -240,7 +241,7 @@ namespace DiBK.RuleValidator
                 }
             }
 
-            foreach (var ruleSettings in validationSettings.RuleSettings)
+            foreach (var ruleSettings in validationSettings.RuleOptions)
             {
                 foreach (var (type, settings) in ruleSettingsDictionary)
                 {
@@ -252,7 +253,7 @@ namespace DiBK.RuleValidator
             _activeRuleSettings.Append(ruleSettingsDictionary);
         }
 
-        private static List<Type> GetSkippedRules(RuleConfig ruleConfig, ValidationSettings validationSettings)
+        private static List<Type> GetSkippedRules(RuleConfig ruleConfig, ValidationOptions validationSettings)
         {
             var skippedRules = new List<Type>();
 
