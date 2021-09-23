@@ -20,12 +20,12 @@ namespace DiBK.RuleValidator
 
         public RuleValidator(
             IRuleService ruleService,
-            IRuleConfigs ruleSetConfigs,
+            IRuleConfigs ruleConfigs,
             ILogger<RuleValidator> logger,
             ILogger<Rule> ruleLogger)
         {
             _ruleService = ruleService;
-            _ruleConfigs = ruleSetConfigs;
+            _ruleConfigs = ruleConfigs;
             _logger = logger;
             _ruleLogger = ruleLogger;
         }
@@ -48,12 +48,12 @@ namespace DiBK.RuleValidator
             _ruleService.AddRules(rules);
         }
 
-        public List<RuleSet> GetRuleInfo(IEnumerable<Type> ruleTypes, Action<ValidationOptions> options = null)
+        public List<RuleSetGroup> GetRuleInfo(IEnumerable<Type> ruleTypes, Action<ValidationOptions> options = null)
         {
             var validationOptions = new ValidationOptions();
             options?.Invoke(validationOptions);
 
-            return ruleTypes
+            var ruleSetGroups = ruleTypes
                 .Select(type =>
                 {
                     var config = _ruleConfigs.Get(type);
@@ -81,6 +81,20 @@ namespace DiBK.RuleValidator
                         .ToList();
 
                     return ruleSet;
+                })
+                .SelectMany(ruleSet => ruleSet.Groups);
+
+            return ruleSetGroups
+                .ToLookup(group => group.Name)
+                .Select(grouping =>
+                {
+                    return new RuleSetGroup
+                    {
+                        Name = grouping.Key,
+                        Rules = grouping
+                            .SelectMany(group => group.Rules)
+                            .ToList()
+                    };
                 })
                 .ToList();
         }
@@ -158,7 +172,7 @@ namespace DiBK.RuleValidator
                 .Where(group => !validationSettings.SkippedGroups.Contains(group.GroupId))
                 .SelectMany(group => group.Rules)
                 .Where(ruleConfig => !validationSettings.SkippedRules.Contains(ruleConfig.Type))
-                .Select(ruleSettings => CreateRule<T>(ruleSettings.Type, ruleConfig.GlobalSettings))
+                .Select(ruleSettings => CreateRule<T>(ruleSettings.Type, validationSettings.GlobalSettings.Merge(ruleConfig.GlobalSettings)))
                 .Where(rule => !rule.Disabled)
                 .ToList();
 

@@ -44,9 +44,16 @@ namespace DiBK.RuleValidator
         protected Dependency DependOn<U>() where U : Rule<T> => new(typeof(U), this);
         protected abstract Status Validate(T data);
         public bool RulePassed<U>(T data) where U : Rule<T> => _ruleService.RulePassed<U, T>(data);
-        protected object GetData(string key) => _ruleService.GetData(key);
+        protected U GetData<U>(string key) where U : class => _ruleService.GetData<U>(key);
         protected void SetData(string key, object data) => _ruleService.SetData(key, data);
-        protected object GetSetting(string key) => _settings[key];
+        
+        protected U GetSetting<U>(string key) where U : class
+        {
+            if (_settings.ContainsKey(key) && _settings[key] is U u)
+                return u;
+
+            return null;
+        }
 
         public void Execute(T data)
         {

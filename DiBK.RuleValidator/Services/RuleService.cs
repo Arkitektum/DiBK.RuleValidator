@@ -87,9 +87,9 @@ namespace DiBK.RuleValidator
             _ruleData.Add(key, data);
         }
 
-        public object GetData(string key)
+        public U GetData<U>(string key) where U : class
         {
-            return _ruleData[key];
+            return (U)_ruleData[key];
         }
 
         private Rule<T> ExecuteAndGet<U, T>(T validationData) 

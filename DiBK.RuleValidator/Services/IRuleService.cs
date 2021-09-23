@@ -13,6 +13,6 @@ namespace DiBK.RuleValidator
         void Execute<T, U>(U validationData) where T : Rule<U> where U : class;
         Status GetRuleStatus<U>(Type type, U validationData) where U : class;
         void SetData(string key, object data);
-        object GetData(string key);
+        U GetData<U>(string key) where U : class;
     }
 }

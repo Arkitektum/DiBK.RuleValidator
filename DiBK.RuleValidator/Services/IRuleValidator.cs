@@ -12,6 +12,6 @@ namespace DiBK.RuleValidator
         List<Rule> GetAllRules();
         List<Rule> GetExecutedRules();
         List<Rule> GetRulesBySettings(List<Rule> rules, Action<dynamic> optionsFilter);
-        List<RuleSet> GetRuleInfo(IEnumerable<Type> ruleTypes, Action<ValidationOptions> options = null);
+        List<RuleSetGroup> GetRuleInfo(IEnumerable<Type> ruleTypes, Action<ValidationOptions> options = null);
     }
 }

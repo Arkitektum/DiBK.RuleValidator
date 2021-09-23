@@ -47,6 +47,21 @@ namespace DiBK.RuleValidator.Exceptions
         }
     }
 
+    public class RuleConfigNotFoundException : Exception
+    {
+        public RuleConfigNotFoundException()
+        {
+        }
+
+        public RuleConfigNotFoundException(string message) : base(message)
+        {
+        }
+
+        public RuleConfigNotFoundException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
+
     public class InvalidTypeException : Exception
     {
         public InvalidTypeException()
