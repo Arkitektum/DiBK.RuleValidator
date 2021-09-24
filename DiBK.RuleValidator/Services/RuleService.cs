@@ -89,7 +89,13 @@ namespace DiBK.RuleValidator
 
         public U GetData<U>(string key) where U : class
         {
-            return (U)_ruleData[key];
+            if (!_ruleData.ContainsKey(key))
+                throw new KeyNotFoundException($"Could not find data with key '{key}'");
+
+            if (_ruleData[key] is U u)
+                return u;
+
+            return null;
         }
 
         private Rule<T> ExecuteAndGet<U, T>(T validationData) 

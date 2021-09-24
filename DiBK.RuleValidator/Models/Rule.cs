@@ -33,17 +33,20 @@ namespace DiBK.RuleValidator
         private IRuleService _ruleService;
         private Dictionary<string, object> _settings;
         private ILogger<Rule> _logger;
+        private bool _loaded;
+
+        public Dependency<T> Dependency { get; set; }
 
         public void Setup(IRuleService ruleService, Dictionary<string, object> settings, ILogger<Rule> logger)
         {
             _ruleService = ruleService;
             _settings = settings;
             _logger = logger;
+            _loaded = true;
         }
 
-        protected Dependency DependOn<U>() where U : Rule<T> => new(typeof(U), this);
+        protected Dependency<T> DependOn<U>() where U : Rule<T> => new(typeof(U), this);
         protected abstract Status Validate(T data);
-        public bool RulePassed<U>(T data) where U : Rule<T> => _ruleService.RulePassed<U, T>(data);
         protected U GetData<U>(string key) where U : class => _ruleService.GetData<U>(key);
         protected void SetData(string key, object data) => _ruleService.SetData(key, data);
         
@@ -57,23 +60,7 @@ namespace DiBK.RuleValidator
 
         public void Execute(T data)
         {
-            if (_ruleService == null)
-                throw new RuleNotLoadedException($"Rule '{GetType().Name}' is not loaded properly.");
-
-            if (Disabled || Executed)
-                return;
-
-            bool correctStatus = true;
-
-            if (Parent != null)
-            {
-                var status = _ruleService.GetRuleStatus(Parent, data) == ParentOutcome;
-
-                if (ParentOutcome != Status.UNDEFINED)
-                    correctStatus = status;
-            }
-
-            if (!correctStatus)
+            if (!CanExecute(data))
                 return;
 
             var start = DateTime.Now;
@@ -89,6 +76,33 @@ namespace DiBK.RuleValidator
                 TimeUsed = timeUsed,
                 MessageCount = Messages.Count
             });
+        }
+
+        private bool CanExecute(T data)
+        {
+            if (!_loaded)
+                throw new RuleNotLoadedException($"Rule '{GetType().Name}' is not setup properly.");
+
+            if (Disabled || Executed)
+                return false;
+
+            if (Dependency != null)
+            {
+                var rule = _ruleService.GetByType<T>(Dependency.Type);
+
+                rule.Execute(data);
+
+                if (Dependency.ShouldPass)
+                    return rule.Status == Status.PASSED;
+                else if (Dependency.ShouldFail)
+                    return rule.Status == Status.FAILED;
+                else if (Dependency.ShouldWarn)
+                    return rule.Status == Status.WARNING;
+                else if (Dependency.ShouldExecute)
+                    return rule.Executed;
+            }
+
+            return true;
         }
     }
 }

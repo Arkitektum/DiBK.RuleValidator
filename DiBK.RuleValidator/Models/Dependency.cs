@@ -2,39 +2,43 @@
 
 namespace DiBK.RuleValidator
 {
-    public class Dependency
+    public class Dependency<T> where T : class
     {
-        private readonly Rule _rule;
-        private readonly Type _type;
+        private readonly Rule<T> _rule;
+        public Type Type { get; private set; }
+        public bool ShouldPass { get; private set; }
+        public bool ShouldFail { get; private set; }
+        public bool ShouldWarn { get; private set; }
+        public bool ShouldExecute { get; private set; }
 
-        public Dependency(Type type, Rule rule)
+        public Dependency(Type type, Rule<T> rule)
         {
-            _type = type;
+            Type = type;
             _rule = rule;
         }
 
         public void ToPass()
         {
-            _rule.Parent = _type;
-            _rule.ParentOutcome = Status.PASSED;
+            ShouldPass = true;
+            _rule.Dependency = this;
         }
 
         public void ToFail()
         {
-            _rule.Parent = _type;
-            _rule.ParentOutcome = Status.FAILED;
+            ShouldFail = true;
+            _rule.Dependency = this;
         }
 
         public void ToWarn()
         {
-            _rule.Parent = _type;
-            _rule.ParentOutcome = Status.WARNING;
+            ShouldWarn = true;
+            _rule.Dependency = this;
         }
 
-        public void ToRun()
+        public void ToExecute()
         {
-            _rule.Parent = _type;
-            _rule.ParentOutcome = Status.UNDEFINED;
+            ShouldExecute = true;
+            _rule.Dependency = this;
         }
     }
 }
