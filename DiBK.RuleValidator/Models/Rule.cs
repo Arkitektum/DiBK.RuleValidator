@@ -10,7 +10,7 @@ namespace DiBK.RuleValidator
     {
         public string Id { get; set; }
         public string Name { get; set; }
-        public List<IRuleMessage> Messages { get; set; } = new List<IRuleMessage>();
+        public List<IRuleMessage> Messages { get; set; } = new(25000);
         public string Description { get; set; }
         public string PreCondition { get; set; }
         public string ChecklistReference { get; set; }
@@ -22,8 +22,6 @@ namespace DiBK.RuleValidator
         public bool HasMessages => Messages.Any();
         public bool Disabled { get; set; }
         public Status Status { get; set; } = Status.NOT_EXECUTED;
-        internal Type Parent { get; set; }
-        internal Status ParentOutcome { get; set; } = Status.UNDEFINED;
         public abstract void Create();
         public override string ToString() => $"{Id}: {Name}";
     }

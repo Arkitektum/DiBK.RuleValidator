@@ -3,7 +3,6 @@ using DiBK.RuleValidator.Extensions;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Dynamic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -197,22 +196,20 @@ namespace DiBK.RuleValidator
 
             foreach (var rule in rules)
             {
-                if (rules.Any(r => r.Parent == rule.GetType()))
+                if (rules.Any(r => r.Dependency?.Type == rule.GetType()))
                     sequentials.Add(rule);
                 else
                     parallels.Add(rule);
             }
 
-            /*sequentials.ForEach(rule => ExecuteRule(rule, validationData));
-            Parallel.ForEach(parallels, rule => ExecuteRule(rule, validationData));*/
-            rules.ForEach(rule => ExecuteRule(rule, validationData));
+            sequentials.ForEach(rule => ExecuteRule(rule, validationData));
+            Parallel.ForEach(parallels, rule => ExecuteRule(rule, validationData));
         }
 
         private void ExecuteRule<T>(Rule<T> rule, T validationData) where T : class
         {
             try
             {
-                Debug.WriteLine(rule.ToString());
                 rule.Execute(validationData);
             }
             catch (Exception exception)
