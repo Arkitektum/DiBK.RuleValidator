@@ -20,25 +20,25 @@ namespace DiBK.RuleValidator
         public void ToPass()
         {
             ShouldPass = true;
-            _rule.Dependency = this;
+            _rule.Dependencies.Add(this);
         }
 
         public void ToFail()
         {
             ShouldFail = true;
-            _rule.Dependency = this;
+            _rule.Dependencies.Add(this);
         }
 
         public void ToWarn()
         {
             ShouldWarn = true;
-            _rule.Dependency = this;
+            _rule.Dependencies.Add(this);
         }
 
         public void ToExecute()
         {
             ShouldExecute = true;
-            _rule.Dependency = this;
+            _rule.Dependencies.Add(this);
         }
     }
 }

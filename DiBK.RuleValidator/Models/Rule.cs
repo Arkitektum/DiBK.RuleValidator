@@ -32,8 +32,7 @@ namespace DiBK.RuleValidator
         private Dictionary<string, object> _settings;
         private ILogger<Rule> _logger;
         private bool _loaded;
-
-        public Dependency<T> Dependency { get; set; }
+        public List<Dependency<T>> Dependencies { get; } = new();
 
         public void Setup(IRuleService ruleService, Dictionary<string, object> settings, ILogger<Rule> logger)
         {
@@ -47,7 +46,7 @@ namespace DiBK.RuleValidator
         protected abstract Status Validate(T data);
         protected U GetData<U>(string key) where U : class => _ruleService.GetData<U>(key);
         protected void SetData(string key, object data) => _ruleService.SetData(key, data);
-        
+
         protected U GetSetting<U>(string key) where U : class
         {
             if (_settings.ContainsKey(key) && _settings[key] is U u)
@@ -84,23 +83,27 @@ namespace DiBK.RuleValidator
             if (Disabled || Executed)
                 return false;
 
-            if (Dependency != null)
-            {
-                var rule = _ruleService.GetByType<T>(Dependency.Type);
+            if (!Dependencies.Any())
+                return true;
 
-                rule.Execute(data);
+            return Dependencies
+                .All(dependency =>
+                {
+                    var rule = _ruleService.GetByType<T>(dependency.Type);
 
-                if (Dependency.ShouldPass)
-                    return rule.Status == Status.PASSED;
-                else if (Dependency.ShouldFail)
-                    return rule.Status == Status.FAILED;
-                else if (Dependency.ShouldWarn)
-                    return rule.Status == Status.WARNING;
-                else if (Dependency.ShouldExecute)
-                    return rule.Executed;
-            }
+                    rule.Execute(data);
 
-            return true;
+                    if (dependency.ShouldPass)
+                        return rule.Status == Status.PASSED;
+                    else if (dependency.ShouldFail)
+                        return rule.Status == Status.FAILED;
+                    else if (dependency.ShouldWarn)
+                        return rule.Status == Status.WARNING;
+                    else if (dependency.ShouldExecute)
+                        return rule.Executed;
+
+                    return true;
+                });
         }
     }
 }

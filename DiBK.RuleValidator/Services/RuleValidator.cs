@@ -196,7 +196,7 @@ namespace DiBK.RuleValidator
 
             foreach (var rule in rules)
             {
-                if (rules.Any(r => r.Dependency?.Type == rule.GetType()))
+                if (rules.Any(r => r.Dependencies.Any(dependency => dependency.Type == rule.GetType())))
                     sequentials.Add(rule);
                 else
                     parallels.Add(rule);
