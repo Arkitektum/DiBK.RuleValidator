@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace DiBK.RuleValidator
 {
@@ -53,23 +54,23 @@ namespace DiBK.RuleValidator
             return rule as Rule<T>;
         }
 
-        public bool RulePassed<U, T>(T validationData) 
+        public async Task<bool> RulePassed<U, T>(T validationData) 
             where T : class
             where U : Rule<T>
         {
-            var rule = ExecuteAndGet<U, T>(validationData);
+            var rule = await ExecuteAndGet<U, T>(validationData);
 
             return rule.Passed;
         }
 
-        public void Execute<U, T>(T validationData) 
+        public async Task Execute<U, T>(T validationData) 
             where T : class 
             where U : Rule<T>
         {
-            var _ = ExecuteAndGet<U, T>(validationData);
+            var _ = await ExecuteAndGet<U, T>(validationData);
         }
 
-        public Status GetRuleStatus<T>(Type type, T validationData) 
+        public async Task<Status> GetRuleStatus<T>(Type type, T validationData) 
             where T : class
         {
             if (!type.IsSubclassOf(typeof(Rule<T>)))
@@ -77,7 +78,7 @@ namespace DiBK.RuleValidator
 
             var rule = GetByType<T>(type);
 
-            rule.Execute(validationData);
+            await rule.Execute(validationData);
 
             return rule.Status;
         }
@@ -98,7 +99,7 @@ namespace DiBK.RuleValidator
             return null;
         }
 
-        private Rule<T> ExecuteAndGet<U, T>(T validationData) 
+        private async Task<Rule<T>> ExecuteAndGet<U, T>(T validationData) 
             where T : class 
             where U : Rule<T> 
         {
@@ -107,7 +108,7 @@ namespace DiBK.RuleValidator
             if (rule == null)
                 throw new RuleNotFoundException();
 
-            rule.Execute(validationData);
+            await rule.Execute(validationData);
 
             return rule;
         }

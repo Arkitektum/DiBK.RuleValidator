@@ -4,7 +4,8 @@
     {
         ERROR = 1,
         WARNING = 2,
-        INFORMATION = 3
+        ERROR_AND_WARNING = 3,
+        INFORMATION = 4
     }
 
     public enum Status
@@ -13,7 +14,7 @@
         FAILED = 2,
         WARNING = 3,
         INFO = 4,
-        NOT_EXECUTED = 5,
+        SKIPPED = 5,
         SYSTEM_ERROR = 6,
         UNDEFINED = -1
     }

@@ -6,22 +6,27 @@ using System.Reflection;
 
 namespace DiBK.RuleValidator.Config
 {
-    public static class ValidatorConfig
+    public static class RuleValidatorConfig
     {
-        public static void AddRuleValidator(this IServiceCollection services, IEnumerable<Assembly> ruleAssemblies)
+        public static void AddRuleValidator(this IServiceCollection services, Action<RuleValidatorSettings> settings)
         {
-            if (!ruleAssemblies.Any())
+            var ruleValidatorSettings = new RuleValidatorSettings();
+            settings.Invoke(ruleValidatorSettings);
+
+            if (!ruleValidatorSettings.RuleAssemblies?.Any() ?? true)
                 throw new Exception();
 
             services.AddTransient<IRuleService, RuleService>();
             services.AddTransient<IRuleValidator, RuleValidator>();
 
-            var configs = GetRuleConfigs(ruleAssemblies);
+            var configs = GetRuleConfigs(ruleValidatorSettings.RuleAssemblies);
 
             if (!configs.Any())
                 throw new Exception();
 
-            services.AddSingleton<IRuleConfigs>(new RuleConfigs(configs));
+            var ruleSettings = new RuleSettings(new RuleConfigs(configs), ruleValidatorSettings.MaxMessageCount);
+
+            services.AddSingleton<IRuleSettings>(ruleSettings);
         }
 
         private static Dictionary<Type, RuleConfig> GetRuleConfigs(IEnumerable<Assembly> ruleAssemblies)

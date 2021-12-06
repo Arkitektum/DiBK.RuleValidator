@@ -12,7 +12,7 @@ namespace DiBK.RuleValidator
     public class RuleValidator : IRuleValidator
     {
         private readonly IRuleService _ruleService;
-        private readonly IRuleConfigs _ruleConfigs;
+        private readonly IRuleSettings _ruleSettings;
         private readonly ILogger<RuleValidator> _logger;
         private readonly ILogger<Rule> _ruleLogger;
         private readonly List<RuleConfig> _activeRuleConfigs = new();
@@ -20,29 +20,29 @@ namespace DiBK.RuleValidator
 
         public RuleValidator(
             IRuleService ruleService,
-            IRuleConfigs ruleConfigs,
+            IRuleSettings ruleSettings,
             ILogger<RuleValidator> logger,
             ILogger<Rule> ruleLogger)
         {
             _ruleService = ruleService;
-            _ruleConfigs = ruleConfigs;
+            _ruleSettings = ruleSettings;
             _logger = logger;
             _ruleLogger = ruleLogger;
         }
 
-        public void Validate<T>(T validationData, Action<ValidationOptions> settings = null) where T : class
+        public async Task Validate<T>(T validationData, Action<ValidationOptions> settings = null) where T : class
         {
-            var config = _ruleConfigs.Get(typeof(T));
+            var config = _ruleSettings.RuleConfigs.Get(typeof(T));
             var rules = GetRules<T>(config, settings);
 
             _ruleService.AddRules(rules);
 
-            ExecuteRules(rules, validationData);
+            await ExecuteRules(rules, validationData);
         }
 
         public void LoadRules<T>(Action<ValidationOptions> settings = null) where T : class
         {
-            var config = _ruleConfigs.Get(typeof(T));
+            var config = _ruleSettings.RuleConfigs.Get(typeof(T));
             var rules = GetRules<T>(config, settings);
 
             _ruleService.AddRules(rules);
@@ -56,7 +56,7 @@ namespace DiBK.RuleValidator
             var ruleSetGroups = ruleTypes
                 .Select(type =>
                 {
-                    var config = _ruleConfigs.Get(type);
+                    var config = _ruleSettings.RuleConfigs.Get(type);
                     var ruleSet = new RuleSet { Name = config.Name, Description = config.Description };
 
                     ruleSet.Groups = config.Groups
@@ -136,7 +136,7 @@ namespace DiBK.RuleValidator
         public List<Rule> GetExecutedRules()
         {
             var rules = _ruleService.GetAll()
-                .Where(rule => rule.Status != Status.NOT_EXECUTED)
+                .Where(rule => rule.Status != Status.SKIPPED)
                 .ToList();
 
             return OrderRules(rules);
@@ -179,17 +179,17 @@ namespace DiBK.RuleValidator
             return rules;
         }
 
-        private Rule<T> CreateRule<T>(Type ruleType, Dictionary<string, object> ruleSettings) where T : class
+        private Rule<T> CreateRule<T>(Type ruleType, IReadOnlyDictionary<string, object> ruleSettings) where T : class
         {
             var rule = Activator.CreateInstance(ruleType) as Rule<T>;
 
-            rule.Setup(_ruleService, ruleSettings, _ruleLogger);
+            rule.Setup(_ruleService, ruleSettings, _ruleSettings.MaxMessageCount, _ruleLogger);
             rule.Create();
 
             return rule;
         }
 
-        private void ExecuteRules<T>(List<Rule<T>> rules, T validationData) where T : class
+        private async Task ExecuteRules<T>(List<Rule<T>> rules, T validationData) where T : class
         {
             var sequentials = new List<Rule<T>>();
             var parallels = new List<Rule<T>>();
@@ -202,15 +202,17 @@ namespace DiBK.RuleValidator
                     parallels.Add(rule);
             }
 
-            sequentials.ForEach(rule => ExecuteRule(rule, validationData));
-            Parallel.ForEach(parallels, rule => ExecuteRule(rule, validationData));
+            foreach (var rule in sequentials)
+                await ExecuteRule(rule, validationData);
+            
+            await parallels.AsyncParallelForEach(async rule => await ExecuteRule(rule, validationData));
         }
 
-        private void ExecuteRule<T>(Rule<T> rule, T validationData) where T : class
+        private async Task ExecuteRule<T>(Rule<T> rule, T validationData) where T : class
         {
             try
             {
-                rule.Execute(validationData);
+                await rule.Execute(validationData);
             }
             catch (Exception exception)
             {
