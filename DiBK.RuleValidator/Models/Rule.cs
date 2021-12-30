@@ -3,6 +3,7 @@ using DiBK.RuleValidator.Extensions;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ namespace DiBK.RuleValidator
 {
     public abstract class Rule
     {
+        private readonly List<RuleMessage> _messages = new(1000);
         public string Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
@@ -19,13 +21,14 @@ namespace DiBK.RuleValidator
         public string Source { get; set; }
         public string Documentation { get; set; }
         public MessageType MessageType { get; set; } = MessageType.ERROR;
-        public List<IRuleMessage> Messages { get; set; } = new(1000);
+        public ReadOnlyCollection<RuleMessage> Messages => _messages.AsReadOnly();
         public bool HasMessages => Messages.Any();
         public bool Passed => Status == Status.PASSED;
         public bool Executed => Status != Status.SKIPPED;
         public Status Status { get; set; } = Status.SKIPPED;
         public abstract void Create();
         public override string ToString() => $"{Id}: {Name}";
+        public virtual void AddMessage(RuleMessage message) => _messages.Add(message);
     }
 
     public abstract class ExecutableRule : Rule
@@ -34,7 +37,7 @@ namespace DiBK.RuleValidator
         protected int MaxMessageCount { get; set; }
         protected CancellationTokenSource TokenSource { get; } = new();
 
-        public void AddMessage(IRuleMessage message)
+        public override void AddMessage(RuleMessage message)
         {
             if (Messages.Count == MaxMessageCount)
             {
@@ -42,7 +45,7 @@ namespace DiBK.RuleValidator
                 TokenSource.Token.ThrowIfCancellationRequested();
             }
 
-            Messages.Add(message);
+            base.AddMessage(message);
         }
     }
 
@@ -50,9 +53,14 @@ namespace DiBK.RuleValidator
     {
         private IRuleService _ruleService;
         private IReadOnlyDictionary<string, object> _settings;
+        private IReadOnlyDictionary<string, string> _translations;
         private ILogger<Rule> _logger;
 
-        public void Setup(IRuleService ruleService, IReadOnlyDictionary<string, object> settings, int maxMessageCount, ILogger<Rule> logger)
+        public void Setup(
+            IRuleService ruleService, 
+            IReadOnlyDictionary<string, object> settings, 
+            int maxMessageCount, 
+            ILogger<Rule> logger)
         {
             _ruleService = ruleService;
             _settings = settings;
@@ -68,6 +76,14 @@ namespace DiBK.RuleValidator
         protected abstract void Validate(T data);
         protected U GetData<U>(string key) where U : class => _ruleService.GetData<U>(key);
         protected void SetData(string key, object data) => _ruleService.SetData(key, data);
+
+        protected string Translate(string key, params string[] arguments)
+        {
+            if (_translations.TryGetValue(key, out var translation))
+                return string.Format(translation, arguments);
+
+            return key;
+        }
 
         protected void SkipRule()
         {
@@ -89,7 +105,7 @@ namespace DiBK.RuleValidator
             if (!await CanExecute(data))
                 return;
 
-            var start = DateTime.Now;
+            var startTime = DateTime.Now;
             var validationTask = Task.Run(() => { Validate(data); }, TokenSource.Token);
 
             try
@@ -101,8 +117,6 @@ namespace DiBK.RuleValidator
             }
             finally
             {
-                double timeUsed = DateTime.Now.Subtract(start).TotalSeconds;
-
                 TokenSource.Dispose();
 
                 SetStatus();
@@ -113,7 +127,7 @@ namespace DiBK.RuleValidator
                     Name,
                     FullName = ToString(),
                     Status,
-                    TimeUsed = timeUsed,
+                    TimeUsed = DateTime.Now.Subtract(startTime).TotalSeconds,
                     MessageCount = Messages.Count
                 });
             }

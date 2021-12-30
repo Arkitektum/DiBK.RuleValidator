@@ -1,13 +1,10 @@
-﻿namespace DiBK.RuleValidator
-{
-    public interface IRuleMessage
-    {
-        public string Message { get; set; }
-    }
+﻿using System.Collections.Generic;
 
-    public class RuleMessage : IRuleMessage
+namespace DiBK.RuleValidator
+{
+    public class RuleMessage
     {
         public string Message { get; set; }
-        public string FileName { get; set; }
+        public Dictionary<string, object> Properties { get; set; }
     }
 }
