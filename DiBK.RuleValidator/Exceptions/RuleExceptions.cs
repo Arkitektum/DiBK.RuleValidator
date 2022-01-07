@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace DiBK.RuleValidator.Exceptions
+namespace DiBK.RuleValidator
 {
     public class RuleNotFoundException : Exception
     {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace DiBK.RuleValidator.Attributes
+namespace DiBK.RuleValidator
 {
     [AttributeUsage(AttributeTargets.Class)]
     public class TranslationAttribute : Attribute

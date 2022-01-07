@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
-namespace DiBK.RuleValidator.Extensions
+namespace DiBK.RuleValidator
 {
     public static class EnumerableExtensions
     {

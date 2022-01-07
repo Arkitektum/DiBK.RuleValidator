@@ -1,5 +1,4 @@
 ﻿using DiBK.RuleValidator.Config;
-using DiBK.RuleValidator.Extensions;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -36,8 +35,11 @@ namespace DiBK.RuleValidator
             var rules = GetRules<T>(config, settings);
 
             _ruleService.AddRules(rules);
-
+            
             await ExecuteRules(rules, validationData);
+
+            foreach (var rule in rules)
+                rule.Dispose();
         }
 
         public void LoadRules<T>(Action<ValidationOptions> settings = null) where T : class
@@ -168,15 +170,13 @@ namespace DiBK.RuleValidator
 
             SetActiveConfig(ruleConfig, validationSettings);
 
-            var rules = ruleConfig.Groups
+            return ruleConfig.Groups
                 .Where(group => !validationSettings.SkippedGroups.Contains(group.GroupId))
                 .SelectMany(group => group.Rules)
                 .Where(ruleConfig => !validationSettings.SkippedRules.Contains(ruleConfig.Type))
                 .Select(ruleSettings => CreateRule<T>(ruleSettings.Type, validationSettings.GlobalSettings.Merge(ruleConfig.GlobalSettings)))
                 .Where(rule => !rule.Disabled)
                 .ToList();
-
-            return rules;
         }
 
         private Rule<T> CreateRule<T>(Type ruleType, IReadOnlyDictionary<string, object> ruleSettings) where T : class

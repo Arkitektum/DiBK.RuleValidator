@@ -1,4 +1,4 @@
-﻿using DiBK.RuleValidator.Exceptions;
+﻿using DiBK.RuleValidator;
 using System;
 using System.Collections.Generic;
 

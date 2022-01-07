@@ -1,6 +1,4 @@
-﻿using DiBK.RuleValidator.Exceptions;
-using DiBK.RuleValidator.Extensions;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -31,11 +29,12 @@ namespace DiBK.RuleValidator
         public virtual void AddMessage(RuleMessage message) => _messages.Add(message);
     }
 
-    public abstract class ExecutableRule : Rule
+    public abstract class ExecutableRule : Rule, IDisposable
     {
+        private bool _disposed = false;
         public bool Disabled { get; protected set; }
+        public CancellationTokenSource TokenSource { get; } = new();
         protected int MaxMessageCount { get; set; }
-        protected CancellationTokenSource TokenSource { get; } = new();
 
         public override void AddMessage(RuleMessage message)
         {
@@ -46,6 +45,23 @@ namespace DiBK.RuleValidator
             }
 
             base.AddMessage(message);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                    TokenSource.Dispose();
+
+                _disposed = true;
+            }
         }
     }
 
@@ -117,8 +133,6 @@ namespace DiBK.RuleValidator
             }
             finally
             {
-                TokenSource.Dispose();
-
                 SetStatus();
 
                 _logger.LogInformation("{@Rule}", new

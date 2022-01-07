@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace DiBK.RuleValidator.Extensions
+namespace DiBK.RuleValidator
 {
     public static class DictionaryExtensions
     {
