@@ -17,14 +17,21 @@ namespace DiBK.RuleValidator.Config
                 throw new Exception();
 
             services.AddTransient<IRuleService, RuleService>();
+            services.AddTransient<ITranslationService, TranslationService>();
             services.AddTransient<IRuleValidator, RuleValidator>();
 
             var configs = GetRuleConfigs(ruleValidatorSettings.RuleAssemblies);
 
+            var customTranslations = TranslationService.CreateTranslations(ruleValidatorSettings.TranslationAssemblies);
+
+            var translations = TranslationService.CreateTranslations(ruleValidatorSettings.RuleAssemblies)
+                .Where(translation => !customTranslations.Any(customTranslation => translation.ResourceName == customTranslation.ResourceName))
+                .ToList();
+
             if (!configs.Any())
                 throw new Exception();
 
-            var ruleSettings = new RuleSettings(new RuleConfigs(configs), ruleValidatorSettings.MaxMessageCount);
+            var ruleSettings = new RuleSettings(new RuleConfigs(configs), translations, customTranslations, ruleValidatorSettings.MaxMessageCount);
 
             services.AddSingleton<IRuleSettings>(ruleSettings);
         }

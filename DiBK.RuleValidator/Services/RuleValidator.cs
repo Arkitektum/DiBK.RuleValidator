@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace DiBK.RuleValidator
@@ -11,6 +12,7 @@ namespace DiBK.RuleValidator
     public class RuleValidator : IRuleValidator
     {
         private readonly IRuleService _ruleService;
+        private readonly ITranslationService _translationService;
         private readonly IRuleSettings _ruleSettings;
         private readonly ILogger<RuleValidator> _logger;
         private readonly ILogger<Rule> _ruleLogger;
@@ -19,11 +21,13 @@ namespace DiBK.RuleValidator
 
         public RuleValidator(
             IRuleService ruleService,
+            ITranslationService translationService,
             IRuleSettings ruleSettings,
             ILogger<RuleValidator> logger,
             ILogger<Rule> ruleLogger)
         {
             _ruleService = ruleService;
+            _translationService = translationService;
             _ruleSettings = ruleSettings;
             _logger = logger;
             _ruleLogger = ruleLogger;
@@ -35,7 +39,7 @@ namespace DiBK.RuleValidator
             var rules = GetRules<T>(config, settings);
 
             _ruleService.AddRules(rules);
-            
+
             await ExecuteRules(rules, validationData);
 
             foreach (var rule in rules)
@@ -72,7 +76,10 @@ namespace DiBK.RuleValidator
                                 .Select(ruleOptions =>
                                 {
                                     var rule = Activator.CreateInstance(ruleOptions.Type) as Rule;
+                                    var translations = _translationService.GetTranslationsForRule(rule);
+
                                     rule.Create();
+                                    TranslateRuleProperties(rule, translations);
 
                                     return new RuleInfo(rule.Id, rule.Name, rule.Description, rule.MessageType.ToString(), rule.Documentation);
                                 })
@@ -179,12 +186,17 @@ namespace DiBK.RuleValidator
                 .ToList();
         }
 
+
+
         private Rule<T> CreateRule<T>(Type ruleType, IReadOnlyDictionary<string, object> ruleSettings) where T : class
         {
             var rule = Activator.CreateInstance(ruleType) as Rule<T>;
+            var translations = _translationService.GetTranslationsForRule(rule);
 
-            rule.Setup(_ruleService, ruleSettings, _ruleSettings.MaxMessageCount, _ruleLogger);
+            rule.Setup(_ruleService, ruleSettings, translations, _ruleSettings.MaxMessageCount, _ruleLogger);
             rule.Create();
+
+            TranslateRuleProperties(rule, translations);
 
             return rule;
         }
@@ -204,7 +216,7 @@ namespace DiBK.RuleValidator
 
             foreach (var rule in sequentials)
                 await ExecuteRule(rule, validationData);
-            
+
             await parallels.AsyncParallelForEach(async rule => await ExecuteRule(rule, validationData));
         }
 
@@ -267,6 +279,25 @@ namespace DiBK.RuleValidator
             }
 
             _activeRuleSettings.Append(ruleSettingsDictionary);
+        }
+
+        private static void TranslateRuleProperties(Rule rule, IReadOnlyDictionary<string, string> translations)
+        {
+            var properties = rule.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
+            if (rule.Id == "gml.epsg.1")
+            {
+
+            }
+            foreach (var kvp in translations)
+            {
+                if (!Rule.TranslatableProperties.Contains(kvp.Key))
+                    continue;
+
+                var propertyInfo = properties.SingleOrDefault(property => property.Name == kvp.Key);
+
+                if (propertyInfo != null)
+                    propertyInfo.SetValue(rule, kvp.Value, null);
+            }
         }
 
         private static List<Type> GetSkippedRules(RuleConfig ruleConfig, ValidationOptions validationSettings)

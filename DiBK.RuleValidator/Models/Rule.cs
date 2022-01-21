@@ -27,6 +27,8 @@ namespace DiBK.RuleValidator
         public abstract void Create();
         public override string ToString() => $"{Id}: {Name}";
         public virtual void AddMessage(RuleMessage message) => _messages.Add(message);
+
+        public static readonly IEnumerable<string> TranslatableProperties = new[] { "Name", "Description", "PreCondition", "ChecklistReference", "Source", "Documentation" };
     }
 
     public abstract class ExecutableRule : Rule, IDisposable
@@ -75,11 +77,13 @@ namespace DiBK.RuleValidator
         public void Setup(
             IRuleService ruleService, 
             IReadOnlyDictionary<string, object> settings, 
+            IReadOnlyDictionary<string, string> translations,
             int maxMessageCount, 
             ILogger<Rule> logger)
         {
             _ruleService = ruleService;
             _settings = settings;
+            _translations = translations;
             _logger = logger;
             MaxMessageCount = maxMessageCount;
             Loaded = true;
@@ -93,7 +97,7 @@ namespace DiBK.RuleValidator
         protected U GetData<U>(string key) where U : class => _ruleService.GetData<U>(key);
         protected void SetData(string key, object data) => _ruleService.SetData(key, data);
 
-        protected string Translate(string key, params string[] arguments)
+        protected string Translate(string key, params object[] arguments)
         {
             if (_translations.TryGetValue(key, out var translation))
                 return string.Format(translation, arguments);

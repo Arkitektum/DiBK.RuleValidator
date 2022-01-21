@@ -5,16 +5,16 @@ namespace DiBK.RuleValidator
     [AttributeUsage(AttributeTargets.Class)]
     public class TranslationAttribute : Attribute
     {
-        private readonly string _resXName;
+        private readonly string _resourceName;
 
-        public TranslationAttribute(string resXName)
+        public TranslationAttribute(string resourceName)
         {
-            _resXName = resXName;
+            _resourceName = resourceName;
         }
 
-        public virtual string ResXName
+        public virtual string ResourceName
         {
-            get { return _resXName; }
+            get { return _resourceName; }
         }
     }
 }
