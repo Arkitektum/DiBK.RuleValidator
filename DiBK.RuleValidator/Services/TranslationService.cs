@@ -23,11 +23,7 @@ namespace DiBK.RuleValidator
         public IReadOnlyDictionary<string, string> GetTranslationsForRule(Rule rule)
         {
             var resourceAttribute = rule.GetType().GetCustomAttributes(typeof(TranslationAttribute), true).FirstOrDefault() as TranslationAttribute;
-            var resourceName = resourceAttribute?.ResourceName;
-
-            if (resourceName == null)
-                return new ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
-
+            var resourceName = resourceAttribute?.ResourceName ?? rule.Id;
             var customTranslationTexts = GetTranslation(_ruleSettings.CustomTranslations, resourceName)?.Texts ?? new();
             var translationTexts = GetTranslation(_ruleSettings.Translations, resourceName)?.Texts ?? new();
             

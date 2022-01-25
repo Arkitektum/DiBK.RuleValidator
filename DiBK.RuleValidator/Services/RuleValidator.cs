@@ -177,16 +177,24 @@ namespace DiBK.RuleValidator
 
             SetActiveConfig(ruleConfig, validationSettings);
 
-            return ruleConfig.Groups
+            var rules = ruleConfig.Groups
                 .Where(group => !validationSettings.SkippedGroups.Contains(group.GroupId))
                 .SelectMany(group => group.Rules)
                 .Where(ruleConfig => !validationSettings.SkippedRules.Contains(ruleConfig.Type))
                 .Select(ruleSettings => CreateRule<T>(ruleSettings.Type, validationSettings.GlobalSettings.Merge(ruleConfig.GlobalSettings)))
                 .Where(rule => !rule.Disabled)
                 .ToList();
+
+            var duplicates = rules
+                .GroupBy(rule => rule.Id)
+                .Where(grouping => grouping.Count() > 1)
+                .Select(grouping => grouping.Key);
+
+            if (duplicates.Any())
+                throw new RuleException($"Rule ID duplicates detected: '{string.Join(", ", duplicates)}'. Rule IDs must be unique.");
+
+            return rules;
         }
-
-
 
         private Rule<T> CreateRule<T>(Type ruleType, IReadOnlyDictionary<string, object> ruleSettings) where T : class
         {
@@ -195,6 +203,9 @@ namespace DiBK.RuleValidator
 
             rule.Setup(_ruleService, ruleSettings, translations, _ruleSettings.MaxMessageCount, _ruleLogger);
             rule.Create();
+
+            if (rule.Id == null)
+                throw new RuleException($"Rule with type '{ruleType.Name}' has no ID.");
 
             TranslateRuleProperties(rule, translations);
 
@@ -284,10 +295,7 @@ namespace DiBK.RuleValidator
         private static void TranslateRuleProperties(Rule rule, IReadOnlyDictionary<string, string> translations)
         {
             var properties = rule.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
-            if (rule.Id == "gml.epsg.1")
-            {
 
-            }
             foreach (var kvp in translations)
             {
                 if (!Rule.TranslatableProperties.Contains(kvp.Key))

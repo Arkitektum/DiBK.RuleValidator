@@ -20,7 +20,7 @@ namespace DiBK.RuleValidator.Config
             if (_ruleSets.ContainsKey(type))
                 return _ruleSets[type];
 
-            throw new RuleConfigNotFoundException($"Rule configuration not found for type '{type.FullName}'.");
+            throw new RuleException($"Rule configuration not found for type '{type.FullName}'.");
         }
     }
 }

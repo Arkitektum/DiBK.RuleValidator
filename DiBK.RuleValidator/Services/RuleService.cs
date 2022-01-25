@@ -21,7 +21,7 @@ namespace DiBK.RuleValidator
             foreach (var rule in rules)
             {
                 if (_rules.Any(r => r.GetType() == rule.GetType()))
-                    throw new RuleAlreadyLoadedException($"The rule '{rule.GetType().Name}' is already loaded");
+                    throw new RuleException($"The rule '{rule.GetType().Name}' is already loaded.");
 
                 _rules.Add(rule);
             }
@@ -73,7 +73,7 @@ namespace DiBK.RuleValidator
             where T : class
         {
             if (!type.IsSubclassOf(typeof(Rule<T>)))
-                throw new InvalidTypeException();
+                throw new RuleException($"Type '{type.Name}' is not a subclass of Rule<{typeof(T).Name}>.");
 
             var rule = GetByType<T>(type);
 
@@ -90,7 +90,7 @@ namespace DiBK.RuleValidator
         public U GetData<U>(string key) where U : class
         {
             if (!_ruleData.ContainsKey(key))
-                throw new KeyNotFoundException($"Could not find data with key '{key}'");
+                throw new KeyNotFoundException($"Could not find data with key '{key}'.");
 
             if (_ruleData[key] is U u)
                 return u;
@@ -105,7 +105,7 @@ namespace DiBK.RuleValidator
             var rule = Get<T, U>();
 
             if (rule == null)
-                throw new RuleNotFoundException();
+                throw new RuleException($"Rule with type '{typeof(T).Name}' was not found.");
 
             await rule.Execute(validationData);
 

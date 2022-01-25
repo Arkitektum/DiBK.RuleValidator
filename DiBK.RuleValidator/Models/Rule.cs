@@ -73,6 +73,7 @@ namespace DiBK.RuleValidator
         private IReadOnlyDictionary<string, object> _settings;
         private IReadOnlyDictionary<string, string> _translations;
         private ILogger<Rule> _logger;
+        private bool _loaded;
 
         public void Setup(
             IRuleService ruleService, 
@@ -86,10 +87,9 @@ namespace DiBK.RuleValidator
             _translations = translations;
             _logger = logger;
             MaxMessageCount = maxMessageCount;
-            Loaded = true;
+            _loaded = true;
         }
 
-        private bool Loaded { get; set; }
         private bool Skipped { get; set; }
         public List<Dependency<T>> Dependencies { get; } = new();
         protected Dependency<T> DependOn<U>() where U : Rule<T> => new(typeof(U), this);
@@ -153,8 +153,8 @@ namespace DiBK.RuleValidator
 
         private async Task<bool> CanExecute(T data)
         {
-            if (!Loaded)
-                throw new RuleNotLoadedException($"Rule '{GetType().Name}' is not setup properly.");
+            if (!_loaded)
+                throw new RuleException($"Rule '{GetType().Name}' is not setup properly.");
 
             if (Disabled || Executed)
                 return false;
