@@ -36,7 +36,7 @@ namespace DiBK.RuleValidator
         private bool _disposed = false;
         public bool Disabled { get; protected set; }
         public CancellationTokenSource TokenSource { get; } = new();
-        protected int MaxMessageCount { get; set; }
+        public int MaxMessageCount { get; internal set; }
 
         public override void AddMessage(RuleMessage message)
         {

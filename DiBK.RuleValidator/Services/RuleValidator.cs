@@ -198,16 +198,16 @@ namespace DiBK.RuleValidator
 
         private Rule<T> CreateRule<T>(Type ruleType, IReadOnlyDictionary<string, object> ruleSettings) where T : class
         {
-            var rule = Activator.CreateInstance(ruleType) as Rule<T>;
-            var translations = _translationService.GetTranslationsForRule(rule);
-
-            rule.Setup(_ruleService, ruleSettings, translations, _ruleSettings.MaxMessageCount, _ruleLogger);
+            var rule = Activator.CreateInstance(ruleType) as Rule<T>;           
             rule.Create();
-
+            
             if (rule.Id == null)
                 throw new RuleException($"Rule with type '{ruleType.Name}' has no ID.");
 
+            var translations = _translationService.GetTranslationsForRule(rule);
             TranslateRuleProperties(rule, translations);
+
+            rule.Setup(_ruleService, ruleSettings, translations, _ruleSettings.MaxMessageCount, _ruleLogger);
 
             return rule;
         }
