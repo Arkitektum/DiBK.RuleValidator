@@ -76,9 +76,12 @@ namespace DiBK.RuleValidator
                                 .Select(ruleOptions =>
                                 {
                                     var rule = Activator.CreateInstance(ruleOptions.Type) as Rule;
-                                    var translations = _translationService.GetTranslationsForRule(rule);
-
                                     rule.Create();
+
+                                    if (rule.Id == null)
+                                        throw new RuleException($"Rule with type '{ruleOptions.Type.Name}' has no ID.");
+
+                                    var translations = _translationService.GetTranslationsForRule(rule);
                                     TranslateRuleProperties(rule, translations);
 
                                     return new RuleInfo(rule.Id, rule.Name, rule.Description, rule.MessageType.ToString(), rule.Documentation);
