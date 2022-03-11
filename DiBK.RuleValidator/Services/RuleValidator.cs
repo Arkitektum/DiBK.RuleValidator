@@ -210,6 +210,9 @@ namespace DiBK.RuleValidator
             var translations = _translationService.GetTranslationsForRule(rule);
             TranslateRuleProperties(rule, translations);
 
+            if (rule.Name == null)
+                rule.Name = ruleType.Name;
+
             rule.Setup(_ruleService, ruleSettings, translations, _ruleSettings.MaxMessageCount, _ruleLogger);
 
             return rule;
@@ -217,16 +220,24 @@ namespace DiBK.RuleValidator
 
         private async Task ExecuteRules<T>(List<Rule<T>> rules, T validationData) where T : class
         {
+            var rulesWithoutDeps = new List<Rule<T>>();
             var sequentials = new List<Rule<T>>();
             var parallels = new List<Rule<T>>();
 
             foreach (var rule in rules)
             {
-                if (rules.Any(r => r.Dependencies.Any(dependency => dependency.Type == rule.GetType())))
-                    sequentials.Add(rule);
+                if (HasDependants(rule, rules))
+                {
+                    if (rule.Dependencies.Any())
+                        sequentials.Add(rule);
+                    else
+                        rulesWithoutDeps.Add(rule);
+                }
                 else
                     parallels.Add(rule);
             }
+
+            await rulesWithoutDeps.AsyncParallelForEach(async rule => await ExecuteRule(rule, validationData));
 
             foreach (var rule in sequentials)
                 await ExecuteRule(rule, validationData);
@@ -330,6 +341,11 @@ namespace DiBK.RuleValidator
             }
 
             return skippedRules;
+        }
+
+        private static bool HasDependants<T>(Rule<T> rule, List<Rule<T>> rules) where T : class
+        {
+            return rules.Any(r => r.Dependencies.Any(dependency => dependency.Type == rule.GetType()));
         }
     }
 }
