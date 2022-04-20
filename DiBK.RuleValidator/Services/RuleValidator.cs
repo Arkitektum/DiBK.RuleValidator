@@ -237,12 +237,12 @@ namespace DiBK.RuleValidator
                     parallels.Add(rule);
             }
 
-            await rulesWithoutDeps.AsyncParallelForEach(async rule => await ExecuteRule(rule, validationData));
+            await Parallel.ForEachAsync(rulesWithoutDeps, async (rule, _) => await ExecuteRule(rule, validationData));
 
             foreach (var rule in sequentials)
                 await ExecuteRule(rule, validationData);
 
-            await parallels.AsyncParallelForEach(async rule => await ExecuteRule(rule, validationData));
+            await Parallel.ForEachAsync(parallels, async (rule, _) => await ExecuteRule(rule, validationData));
         }
 
         private async Task ExecuteRule<T>(Rule<T> rule, T validationData) where T : class
