@@ -132,8 +132,10 @@ namespace DiBK.RuleValidator
             {
                 await validationTask;
             }
-            catch (OperationCanceledException)
-            {       
+            catch (Exception exception)
+            {
+                if (exception is not OperationCanceledException && exception is not AggregateException)
+                    throw;
             }
             finally
             {
