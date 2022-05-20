@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace DiBK.RuleValidator.Config
@@ -10,20 +10,14 @@ namespace DiBK.RuleValidator.Config
         public List<TranslationAssembly> TranslationAssemblies { get; } = new();
         public int MaxMessageCount { get; set; } = int.MaxValue;
 
-        public void AddRules(params string[] assemblyStrings)
+        public void AddRuleAssembly(string assemblyName)
         {
-            RuleAssemblies.AddRange(assemblyStrings.Select(assemblyString => Assembly.Load(assemblyString)));
+            RuleAssemblies.Add(Assembly.Load(assemblyName));
         }
 
-        public void AddTranslations(string assemblyString, string rootNamespace = null)
+        public void AddTranslationAssembly(string assemblyName, string rootNamespace = null)
         {
-            TranslationAssemblies.Add(new TranslationAssembly { Assembly = Assembly.Load(assemblyString), RootNamespace = rootNamespace });
+            TranslationAssemblies.Add(new TranslationAssembly { Assembly = Assembly.Load(assemblyName), RootNamespace = rootNamespace });
         }
-    }
-
-    public class TranslationAssembly
-    {
-        public Assembly Assembly { get; set; }
-        public string RootNamespace { get; set; }
     }
 }

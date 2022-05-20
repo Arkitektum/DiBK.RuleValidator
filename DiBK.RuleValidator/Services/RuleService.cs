@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,7 +9,7 @@ namespace DiBK.RuleValidator
     public class RuleService : IRuleService
     {
         private readonly List<Rule> _rules;
-        private readonly Dictionary<string, object> _ruleData;
+        private readonly ConcurrentDictionary<string, object> _ruleData;
 
         public RuleService()
         {
@@ -84,7 +85,7 @@ namespace DiBK.RuleValidator
 
         public void SetData(string key, object data)
         {
-            _ruleData.Add(key, data);
+            _ = _ruleData.TryAdd(key, data);
         }
 
         public U GetData<U>(string key) where U : class

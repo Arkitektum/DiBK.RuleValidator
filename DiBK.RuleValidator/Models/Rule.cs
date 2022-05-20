@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -10,7 +11,7 @@ namespace DiBK.RuleValidator
 {
     public abstract class Rule
     {
-        private readonly List<RuleMessage> _messages = new(1000);
+        private readonly ConcurrentBag<RuleMessage> _messages = new();
         public string Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
@@ -19,7 +20,7 @@ namespace DiBK.RuleValidator
         public string Source { get; set; }
         public string Documentation { get; set; }
         public MessageType MessageType { get; set; } = MessageType.ERROR;
-        public ReadOnlyCollection<RuleMessage> Messages => _messages.AsReadOnly();
+        public ReadOnlyCollection<RuleMessage> Messages => _messages.ToList().AsReadOnly();
         public bool HasMessages => Messages.Any();
         public bool Passed => Status == Status.PASSED;
         public bool Executed => Status != Status.SKIPPED;

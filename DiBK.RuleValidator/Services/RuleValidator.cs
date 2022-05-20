@@ -237,6 +237,8 @@ namespace DiBK.RuleValidator
                     parallels.Add(rule);
             }
 
+            //var opt = new ParallelOptions();
+
             await Parallel.ForEachAsync(rulesWithoutDeps, async (rule, _) => await ExecuteRule(rule, validationData));
 
             foreach (var rule in sequentials)

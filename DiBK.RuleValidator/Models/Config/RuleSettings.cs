@@ -17,7 +17,11 @@ namespace DiBK.RuleValidator.Config
         public List<Translation> CustomTranslations { get; }
         public int MaxMessageCount { get; }
 
-        public RuleSettings(RuleConfigs ruleConfigs, List<Translation> translations, List<Translation> customTranslations, int maxMessageCount)
+        public RuleSettings(
+            RuleConfigs ruleConfigs, 
+            List<Translation> translations, 
+            List<Translation> customTranslations, 
+            int maxMessageCount)
         {
             RuleConfigs = ruleConfigs;
             Translations = translations;
