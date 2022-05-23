@@ -20,7 +20,7 @@ namespace DiBK.RuleValidator
         public string Source { get; set; }
         public string Documentation { get; set; }
         public MessageType MessageType { get; set; } = MessageType.ERROR;
-        public ReadOnlyCollection<RuleMessage> Messages => _messages.ToList().AsReadOnly();
+        public ReadOnlyCollection<RuleMessage> Messages => _messages.Take(MaxMessageCount).ToList().AsReadOnly();
         public bool HasMessages => Messages.Any();
         public bool Passed => Status == Status.PASSED;
         public bool Executed => Status != Status.SKIPPED;
@@ -28,6 +28,7 @@ namespace DiBK.RuleValidator
         public abstract void Create();
         public override string ToString() => $"{Id}: {Name}";
         public virtual void AddMessage(RuleMessage message) => _messages.Add(message);
+        public int MaxMessageCount { get; internal set; }
 
         public static readonly IEnumerable<string> TranslatableProperties = new[] { "Name", "Description", "PreCondition", "ChecklistReference", "Source", "Documentation" };
     }
@@ -37,7 +38,6 @@ namespace DiBK.RuleValidator
         private bool _disposed = false;
         public bool Disabled { get; protected set; }
         public CancellationTokenSource TokenSource { get; } = new();
-        public int MaxMessageCount { get; internal set; }
 
         public override void AddMessage(RuleMessage message)
         {

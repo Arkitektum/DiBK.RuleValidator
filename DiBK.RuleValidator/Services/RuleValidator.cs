@@ -237,8 +237,6 @@ namespace DiBK.RuleValidator
                     parallels.Add(rule);
             }
 
-            //var opt = new ParallelOptions();
-
             await Parallel.ForEachAsync(rulesWithoutDeps, async (rule, _) => await ExecuteRule(rule, validationData));
 
             foreach (var rule in sequentials)
@@ -256,7 +254,7 @@ namespace DiBK.RuleValidator
             catch (Exception exception)
             {
                 rule.Status = Status.SYSTEM_ERROR;
-                _logger.LogError(exception, $"Could not execute rule '{rule}'");
+                _logger.LogError(exception, "Could not execute rule '{rule}'", rule.ToString());
             }
         }
 
