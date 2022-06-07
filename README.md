@@ -12,5 +12,5 @@ NuGet: [https://www.nuget.org/packages/DiBK.RuleValidator.Extensions.Gml](https:
 
 ## Regelsett
 **Valideringsregler for generell geometri**  
-GitHub: [https://github.com/Arkitektum/DiBK.RuleValidator.Rules.Gml](https://github.com/Arkitektum/DiBK.RuleValidator.Extensions.Gml)  
-NuGet: [https://www.nuget.org/packages/DiBK.RuleValidator.Rules.Gml](https://www.nuget.org/packages/DiBK.RuleValidator.Extensions.Gml)  
+GitHub: [https://github.com/Arkitektum/DiBK.RuleValidator.Rules.Gml](https://github.com/Arkitektum/DiBK.RuleValidator.Rules.Gml)  
+NuGet: [https://www.nuget.org/packages/DiBK.RuleValidator.Rules.Gml](https://www.nuget.org/packages/DiBK.RuleValidator.Rules.Gml)  
