@@ -28,7 +28,7 @@ namespace DiBK.RuleValidator
         public abstract void Create();
         public override string ToString() => $"{Id}: {Name}";
         public virtual void AddMessage(RuleMessage message) => _messages.Add(message);
-        public int MaxMessageCount { get; internal set; }
+        public int MaxMessageCount { get; internal set; } = int.MaxValue;
 
         public static readonly IEnumerable<string> TranslatableProperties = new[] { "Name", "Description", "PreCondition", "ChecklistReference", "Source", "Documentation" };
     }
