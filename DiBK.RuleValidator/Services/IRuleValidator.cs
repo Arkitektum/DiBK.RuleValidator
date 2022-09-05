@@ -8,6 +8,7 @@ namespace DiBK.RuleValidator
     public interface IRuleValidator
     {
         Task Validate<T>(T validationData, Action<ValidationOptions> options = null) where T : class;
+        Task Validate<T>(T validationData, ValidationOptions options = null) where T : class;
         void LoadRules<T>(Action<ValidationOptions> options = null) where T : class;
         Rule<T> GetRule<U, T>() where T : class where U : Rule<T>;
         List<Rule> GetAllRules();

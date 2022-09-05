@@ -33,10 +33,20 @@ namespace DiBK.RuleValidator
             _ruleLogger = ruleLogger;
         }
 
-        public async Task Validate<T>(T validationData, Action<ValidationOptions> settings = null) where T : class
+        public async Task Validate<T>(T validationData, Action<ValidationOptions> options = null) 
+            where T : class
+        {
+            var validationOptions = new ValidationOptions();
+            options?.Invoke(validationOptions);
+
+            await Validate(validationData, validationOptions);
+        }
+
+        public async Task Validate<T>(T validationData, ValidationOptions options = null)
+            where T : class
         {
             var config = _ruleSettings.RuleConfigs.Get(typeof(T));
-            var rules = GetRules<T>(config, settings);
+            var rules = GetRules<T>(config, options);
 
             _ruleService.AddRules(rules);
 
@@ -46,7 +56,8 @@ namespace DiBK.RuleValidator
                 rule.Dispose();
         }
 
-        public void LoadRules<T>(Action<ValidationOptions> settings = null) where T : class
+        public void LoadRules<T>(Action<ValidationOptions> settings = null) 
+            where T : class
         {
             var config = _ruleSettings.RuleConfigs.Get(typeof(T));
             var rules = GetRules<T>(config, settings);
@@ -69,7 +80,7 @@ namespace DiBK.RuleValidator
                         .Where(groupOptions => !validationOptions.SkippedGroups.Contains(groupOptions.GroupId))
                         .Select(groupOptions =>
                         {
-                            var group = new RuleSetGroup { Name = groupOptions.Name };
+                            var group = new RuleSetGroup { Name = groupOptions.Name, GroupId = groupOptions.GroupId };
 
                             group.Rules = groupOptions.Rules
                                 .Where(ruleOptions => !validationOptions.SkippedRules.Contains(ruleOptions.Type))
@@ -81,11 +92,15 @@ namespace DiBK.RuleValidator
                                     if (rule.Id == null)
                                         throw new RuleException($"Rule with type '{ruleOptions.Type.Name}' has no ID.");
 
+                                    if (validationOptions.SkippedRuleIds.Contains(rule.Id))
+                                        return null;
+
                                     var translations = _translationService.GetTranslationsForRule(rule);
                                     TranslateRuleProperties(rule, translations);
 
                                     return new RuleInfo(rule.Id, rule.Name, rule.Description, rule.MessageType.ToString(), rule.Documentation);
                                 })
+                                .Where(rule => rule != null)
                                 .ToList();
 
                             return group;
@@ -103,6 +118,7 @@ namespace DiBK.RuleValidator
                     return new RuleSetGroup
                     {
                         Name = grouping.Key,
+                        GroupId = grouping.First().GroupId,
                         Rules = grouping
                             .SelectMany(group => group.Rules)
                             .ToList()
@@ -173,19 +189,26 @@ namespace DiBK.RuleValidator
             return orderedRules;
         }
 
-        private List<Rule<T>> GetRules<T>(RuleConfig ruleConfig, Action<ValidationOptions> settings = null) where T : class
+        private List<Rule<T>> GetRules<T>(RuleConfig ruleConfig, Action<ValidationOptions> options = null) where T : class
         {
-            var validationSettings = new ValidationOptions();
-            settings?.Invoke(validationSettings);
+            var validationOptions = new ValidationOptions();
+            options?.Invoke(validationOptions);
 
-            SetActiveConfig(ruleConfig, validationSettings);
+            return GetRules<T>(ruleConfig, validationOptions);
+        }
+
+        private List<Rule<T>> GetRules<T>(RuleConfig ruleConfig, ValidationOptions options = null) where T : class
+        {
+            ValidationOptions validationOptions = options ?? new();
+
+            SetActiveConfig(ruleConfig, validationOptions);
 
             var rules = ruleConfig.Groups
-                .Where(group => !validationSettings.SkippedGroups.Contains(group.GroupId))
+                .Where(group => !validationOptions.SkippedGroups.Contains(group.GroupId))
                 .SelectMany(group => group.Rules)
-                .Where(ruleConfig => !validationSettings.SkippedRules.Contains(ruleConfig.Type))
-                .Select(ruleSettings => CreateRule<T>(ruleSettings.Type, validationSettings.GlobalSettings.Merge(ruleConfig.GlobalSettings)))
-                .Where(rule => !rule.Disabled)
+                .Where(ruleConfig => !validationOptions.SkippedRules.Contains(ruleConfig.Type))
+                .Select(ruleSettings => CreateRule<T>(ruleSettings.Type, validationOptions.GlobalSettings.Merge(ruleConfig.GlobalSettings), validationOptions.OnRuleExecuted))
+                .Where(rule => !rule.Disabled && !validationOptions.SkippedRuleIds.Contains(rule.Id))
                 .ToList();
 
             var duplicates = rules
@@ -199,7 +222,7 @@ namespace DiBK.RuleValidator
             return rules;
         }
 
-        private Rule<T> CreateRule<T>(Type ruleType, IReadOnlyDictionary<string, object> ruleSettings) where T : class
+        private Rule<T> CreateRule<T>(Type ruleType, IReadOnlyDictionary<string, object> ruleSettings, Func<RuleResult, Task> onRuleExecuted) where T : class
         {
             var rule = Activator.CreateInstance(ruleType) as Rule<T>;           
             rule.Create();
@@ -213,7 +236,7 @@ namespace DiBK.RuleValidator
             if (rule.Name == null)
                 rule.Name = ruleType.Name;
 
-            rule.Setup(_ruleService, ruleSettings, translations, _ruleSettings.MaxMessageCount, _ruleLogger);
+            rule.Setup(_ruleService, ruleSettings, translations, onRuleExecuted, _ruleLogger, _ruleSettings.MaxMessageCount);
 
             return rule;
         }

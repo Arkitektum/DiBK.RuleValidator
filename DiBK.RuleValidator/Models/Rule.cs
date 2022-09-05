@@ -12,15 +12,14 @@ namespace DiBK.RuleValidator
     public abstract class Rule
     {
         private readonly ConcurrentBag<RuleMessage> _messages = new();
-        public string Id { get; set; }
+        public string Id { get; protected set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public string PreCondition { get; set; }
-        public string ChecklistReference { get; set; }
         public string Source { get; set; }
         public string Documentation { get; set; }
         public MessageType MessageType { get; set; } = MessageType.ERROR;
         public ReadOnlyCollection<RuleMessage> Messages => _messages.Take(MaxMessageCount).ToList().AsReadOnly();
+        public double TimeUsed { get; protected set; }
         public bool HasMessages => Messages.Any();
         public bool Passed => Status == Status.PASSED;
         public bool Executed => Status != Status.SKIPPED;
@@ -80,14 +79,16 @@ namespace DiBK.RuleValidator
             IRuleService ruleService, 
             IReadOnlyDictionary<string, object> settings, 
             IReadOnlyDictionary<string, string> translations,
-            int maxMessageCount, 
-            ILogger<Rule> logger)
+            Func<RuleResult, Task> onRuleExecuted,
+            ILogger<Rule> logger,
+            int maxMessageCount)
         {
             _ruleService = ruleService;
             _settings = settings;
             _translations = translations;
             _logger = logger;
             MaxMessageCount = maxMessageCount;
+            OnRuleExecuted = onRuleExecuted;
             _loaded = true;
         }
 
@@ -97,6 +98,7 @@ namespace DiBK.RuleValidator
         protected abstract void Validate(T data);
         protected U GetData<U>(string key) where U : class => _ruleService.GetData<U>(key);
         protected void SetData(string key, object data) => _ruleService.SetData(key, data);
+        public Func<RuleResult, Task> OnRuleExecuted { get; private set; }
 
         protected string Translate(string key, params object[] arguments)
         {
@@ -142,15 +144,13 @@ namespace DiBK.RuleValidator
             {
                 SetStatus();
 
-                _logger.LogInformation("{@Rule}", new
-                {
-                    Id,
-                    Name,
-                    FullName = ToString(),
-                    Status,
-                    TimeUsed = DateTime.Now.Subtract(startTime).TotalSeconds,
-                    MessageCount = Messages.Count
-                });
+                TimeUsed = DateTime.Now.Subtract(startTime).TotalSeconds;
+
+                var result = new RuleResult(Id, Name, Status, TimeUsed, Messages.Count);
+
+                _logger.LogInformation("{@Rule}", result);
+
+                OnRuleExecuted?.Invoke(result);
             }
         }
 
@@ -169,6 +169,9 @@ namespace DiBK.RuleValidator
                 .AllAsync(async dependency =>
                 {
                     var rule = _ruleService.GetByType<T>(dependency.Type);
+
+                    if (rule == null)
+                        return false;
 
                     await rule.Execute(data);
 

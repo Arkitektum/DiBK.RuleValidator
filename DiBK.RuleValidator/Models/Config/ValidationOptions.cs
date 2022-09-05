@@ -1,18 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace DiBK.RuleValidator.Config
 {
     public sealed class ValidationOptions
     {
         internal List<Type> SkippedRules { get; } = new();
+        internal List<string> SkippedRuleIds { get; } = new();
         internal List<string> SkippedGroups { get; } = new();
         internal List<ValidationGroupOptions> GroupOptions { get; set; } = new();
         internal List<ValidationRuleOptions> RuleOptions { get; set; } = new();
         internal Dictionary<string, object> GlobalSettings { get; } = new();
         internal List<Assembly> ResourceAssemblies { get; } = new();
+        public Func<RuleResult, Task> OnRuleExecuted { get; set; }
 
         public void SkipRule<T>() where T : Rule
         {
@@ -20,6 +22,12 @@ namespace DiBK.RuleValidator.Config
 
             if (!SkippedRules.Contains(type))
                 SkippedRules.Add(type);
+        }
+
+        public void SkipRule(string id)
+        {
+            if (!SkippedRuleIds.Contains(id))
+                SkippedRuleIds.Add(id);
         }
 
         public void SkipGroup(string groupId)
