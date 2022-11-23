@@ -33,16 +33,16 @@ namespace DiBK.RuleValidator
             _ruleLogger = ruleLogger;
         }
 
-        public async Task Validate<T>(T validationData, Action<ValidationOptions> options = null) 
+        public async Task Validate<T>(T input, Action<ValidationOptions> options = null) 
             where T : class
         {
             var validationOptions = new ValidationOptions();
             options?.Invoke(validationOptions);
 
-            await Validate(validationData, validationOptions);
+            await Validate(input, validationOptions);
         }
 
-        public async Task Validate<T>(T validationData, ValidationOptions options = null)
+        public async Task Validate<T>(T input, ValidationOptions options = null)
             where T : class
         {
             var config = _ruleSettings.RuleConfigs.Get(typeof(T));
@@ -50,7 +50,7 @@ namespace DiBK.RuleValidator
 
             _ruleService.AddRules(rules);
 
-            await ExecuteRules(rules, validationData);
+            await ExecuteRules(rules, input);
 
             foreach (var rule in rules)
                 rule.Dispose();
@@ -241,7 +241,7 @@ namespace DiBK.RuleValidator
             return rule;
         }
 
-        private async Task ExecuteRules<T>(List<Rule<T>> rules, T validationData) where T : class
+        private async Task ExecuteRules<T>(List<Rule<T>> rules, T input) where T : class
         {
             var rulesWithoutDeps = new List<Rule<T>>();
             var sequentials = new List<Rule<T>>();
@@ -260,19 +260,19 @@ namespace DiBK.RuleValidator
                     parallels.Add(rule);
             }
 
-            await Parallel.ForEachAsync(rulesWithoutDeps, async (rule, _) => await ExecuteRule(rule, validationData));
+            await Parallel.ForEachAsync(rulesWithoutDeps, async (rule, _) => await ExecuteRule(rule, input));
 
             foreach (var rule in sequentials)
-                await ExecuteRule(rule, validationData);
+                await ExecuteRule(rule, input);
 
-            await Parallel.ForEachAsync(parallels, async (rule, _) => await ExecuteRule(rule, validationData));
+            await Parallel.ForEachAsync(parallels, async (rule, _) => await ExecuteRule(rule, input));
         }
 
-        private async Task ExecuteRule<T>(Rule<T> rule, T validationData) where T : class
+        private async Task ExecuteRule<T>(Rule<T> rule, T input) where T : class
         {
             try
             {
-                await rule.Execute(validationData);
+                await rule.Execute(input);
             }
             catch (Exception exception)
             {

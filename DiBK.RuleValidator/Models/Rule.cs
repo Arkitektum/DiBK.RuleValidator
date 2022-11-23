@@ -38,7 +38,7 @@ namespace DiBK.RuleValidator
         public bool Disabled { get; protected set; }
         public CancellationTokenSource TokenSource { get; } = new();
 
-        public override void AddMessage(RuleMessage message)
+        public override sealed void AddMessage(RuleMessage message)
         {
             if (Messages.Count == MaxMessageCount)
             {
@@ -95,7 +95,8 @@ namespace DiBK.RuleValidator
         private bool Skipped { get; set; }
         public List<Dependency<T>> Dependencies { get; } = new();
         protected Dependency<T> DependOn<U>() where U : Rule<T> => new(typeof(U), this);
-        protected abstract void Validate(T data);
+        protected virtual void Validate(T input) { }
+        protected virtual Task ValidateAsync(T input) => Task.CompletedTask;
         protected U GetData<U>(string key) where U : class => _ruleService.GetData<U>(key);
         protected void SetData(string key, object data) => _ruleService.SetData(key, data);
         public Func<RuleResult, Task> OnRuleExecuted { get; private set; }
@@ -123,13 +124,18 @@ namespace DiBK.RuleValidator
             return null;
         }
 
-        public async Task Execute(T data)
+        public async Task Execute(T input)
         {
-            if (!await CanExecute(data))
+            if (!await CanExecute(input))
                 return;
 
             var startTime = DateTime.Now;
-            var validationTask = Task.Run(() => { Validate(data); }, TokenSource.Token);
+            
+            var validationTask = Task.Run(async () => 
+            { 
+                Validate(input); 
+                await ValidateAsync(input);  
+            }, TokenSource.Token);
 
             try
             {
@@ -154,7 +160,7 @@ namespace DiBK.RuleValidator
             }
         }
 
-        private async Task<bool> CanExecute(T data)
+        private async Task<bool> CanExecute(T input)
         {
             if (!_loaded)
                 throw new RuleException($"Rule '{GetType().Name}' is not setup properly.");
@@ -173,7 +179,7 @@ namespace DiBK.RuleValidator
                     if (rule == null)
                         return false;
 
-                    await rule.Execute(data);
+                    await rule.Execute(input);
 
                     if (dependency.ShouldPass)
                         return rule.Status == Status.PASSED;
